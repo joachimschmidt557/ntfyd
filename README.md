@@ -34,3 +34,16 @@ zig build
 
 The resulting `ntfyd` binary can be found in the `zig-out/bin/`
 directory.
+
+## Usage
+
+Currently, subscribing is done via command-line options. Configuration
+file support is planned.
+
+```
+ntfyd [OPTIONS] [server address] [topics]...
+
+Options:
+ -u     username
+ -p     password
+```
