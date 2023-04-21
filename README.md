@@ -23,7 +23,7 @@ supported.
 ## Build
 
 A recent build of zig is required (zig version
-`0.11.0-dev.2613+b42562be7` was working at the time of writing). Once
+`0.11.0-dev.2680+a1aa55ebe` was working at the time of writing). Once
 zig 0.11.0 is released, development will follow stable releases.
 
 Compiling is as simple as

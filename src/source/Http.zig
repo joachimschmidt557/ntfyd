@@ -60,16 +60,16 @@ fn connect(
         .fragment = connection.uri.fragment,
     };
 
-    const custom_headers = try Source.constructRequestHeaders(allocator, connection);
-    defer Source.freeRequestHeaders(allocator, custom_headers);
+    var headers = try Source.constructRequestHeaders(allocator, connection);
+    defer headers.deinit();
 
-    const headers: std.http.Client.Request.Headers = .{ .custom = custom_headers };
-    var request = try http_client.request(uri, headers, .{});
+    var request = try http_client.request(.GET, uri, headers, .{});
     errdefer request.deinit();
 
+    try request.start();
     try request.do();
 
-    if (request.response.headers.status != .ok) {
+    if (request.response.status != .ok) {
         return error.HttpConnectError;
     }
 

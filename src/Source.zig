@@ -71,8 +71,8 @@ pub fn constructUriPath(
 pub fn constructRequestHeaders(
     allocator: std.mem.Allocator,
     connection: Connection,
-) ![]const std.http.CustomHeader {
-    var headers = std.ArrayList(std.http.CustomHeader).init(allocator);
+) !std.http.Headers {
+    var headers = std.http.Headers.init(allocator);
     errdefer headers.deinit();
 
     if (connection.authentication) |auth| {
@@ -86,18 +86,9 @@ pub fn constructRequestHeaders(
         const base64 = Base64Encoder.encode(buf, username_password);
 
         const value = try std.fmt.allocPrint(allocator, "Basic {s}", .{base64});
-        try headers.append(.{ .name = "Authorization", .value = value });
+        defer allocator.free(value);
+        try headers.append("Authorization", value);
     }
 
-    return headers.toOwnedSlice();
-}
-
-pub fn freeRequestHeaders(
-    allocator: std.mem.Allocator,
-    headers: []const std.http.CustomHeader,
-) void {
-    for (headers) |header| {
-        allocator.free(header.value);
-    }
-    allocator.free(headers);
+    return headers;
 }
