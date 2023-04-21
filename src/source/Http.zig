@@ -69,11 +69,13 @@ fn connect(
     try request.start();
     try request.do();
 
-    if (request.response.status != .ok) {
-        return error.HttpConnectError;
+    switch (request.response.status) {
+        .ok => return request,
+        else => {
+            std.log.err("connection returned response {}", .{request.response.status});
+            return error.HttpConnectError;
+        },
     }
-
-    return request;
 }
 
 fn clearBuffers(http: *Http) void {

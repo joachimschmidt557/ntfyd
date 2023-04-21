@@ -15,12 +15,11 @@ const DBus = @This();
 
 base: Sink,
 
-allocator: std.mem.Allocator,
 bus: *c.sd_bus,
 
 pub const base_tag: Sink.Tag = .dbus;
 
-pub fn init(allocator: std.mem.Allocator) !*DBus {
+pub fn create(allocator: std.mem.Allocator) !*DBus {
     const dbus = try allocator.create(DBus);
     errdefer allocator.destroy(dbus);
 
@@ -31,8 +30,11 @@ pub fn init(allocator: std.mem.Allocator) !*DBus {
 
     if (maybe_bus) |bus| {
         dbus.* = DBus{
-            .base = .{ .tag = .dbus },
-            .allocator = allocator,
+            .base = .{
+                .tag = .dbus,
+                .allocator = allocator,
+            },
+
             .bus = bus,
         };
         return dbus;
@@ -41,8 +43,8 @@ pub fn init(allocator: std.mem.Allocator) !*DBus {
     }
 }
 
-pub fn deinit(dbus: *DBus) void {
-    const allocator = dbus.allocator;
+pub fn destroy(dbus: *DBus) void {
+    const allocator = dbus.base.allocator;
 
     _ = c.sd_bus_unref(dbus.bus);
 
@@ -50,11 +52,13 @@ pub fn deinit(dbus: *DBus) void {
 }
 
 pub fn notify(dbus: *DBus, message: Message) !void {
-    const message_z = try dbus.allocator.dupeZ(u8, message.message.?);
-    defer dbus.allocator.free(message_z);
+    const allocator = dbus.base.allocator;
 
-    const title_z = if (message.title) |title| try dbus.allocator.dupeZ(u8, title) else "ntfy";
-    defer if (message.title) |_| dbus.allocator.free(title_z);
+    const message_z = try allocator.dupeZ(u8, message.message.?);
+    defer allocator.free(message_z);
+
+    const title_z = if (message.title) |title| try allocator.dupeZ(u8, title) else "ntfy";
+    defer if (message.title) |_| allocator.free(title_z);
 
     var ret_error: c.sd_bus_error = sd_bus_error_null;
     defer c.sd_bus_error_free(&ret_error);

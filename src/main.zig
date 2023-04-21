@@ -24,6 +24,7 @@ pub fn main() !void {
     defer topics.deinit();
     var username: ?[]const u8 = null;
     var password: ?[]const u8 = null;
+    var sink_tag = Sink.supported_sinks[0];
 
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
@@ -36,6 +37,15 @@ pub fn main() !void {
             if (i + 1 >= args.len) fatal("expected parameter after '{s}'", .{arg});
             i += 1;
             password = args[i];
+        } else if (std.mem.eql(u8, "-s", args[i])) {
+            if (i + 1 >= args.len) fatal("expected parameter after '{s}'", .{arg});
+            i += 1;
+            sink_tag = std.meta.stringToEnum(Sink.Tag, args[i]) orelse {
+                fatal("invalid sink type '{s}'", .{args[i]});
+            };
+            if (std.mem.indexOfScalar(Sink.Tag, Sink.supported_sinks, sink_tag) == null) {
+                fatal("sink type '{s}' not supported ", .{args[i]});
+            }
         } else if (server_address == null) {
             server_address = arg;
         } else {
@@ -51,8 +61,8 @@ pub fn main() !void {
     var http_client = std.http.Client{ .allocator = allocator };
     defer http_client.deinit();
 
-    const sink = &(try DBus.init(allocator)).base;
-    defer sink.deinit();
+    const sink = try Sink.create(allocator, sink_tag);
+    defer sink.destroy();
 
     const source = &(try Http.init(allocator, .{
         .uri = try std.Uri.parse(server_address.?),
