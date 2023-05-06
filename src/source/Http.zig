@@ -67,7 +67,7 @@ fn connect(
     errdefer request.deinit();
 
     try request.start();
-    try request.do();
+    try request.wait();
 
     switch (request.response.status) {
         .ok => return request,
