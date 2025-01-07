@@ -44,18 +44,26 @@ pub fn create(allocator: std.mem.Allocator, tag: Tag) !*Sink {
 
 pub fn destroy(base: *Sink) void {
     switch (base.tag) {
-        .null => @fieldParentPtr(Null, "base", base).destroy(),
+        .null => {
+            const null_sink: *Null = @fieldParentPtr("base", base);
+            null_sink.destroy();
+        },
         .dbus => if (build_options.enable_dbus) {
-            @fieldParentPtr(DBus, "base", base).destroy();
+            const dbus_sink: *DBus = @fieldParentPtr("base", base);
+            dbus_sink.destroy();
         } else unreachable,
     }
 }
 
 pub fn notify(base: *Sink, message: Message) !void {
     switch (base.tag) {
-        .null => try @fieldParentPtr(Null, "base", base).notify(message),
+        .null => {
+            const null_sink: *Null = @fieldParentPtr("base", base);
+            try null_sink.notify(message);
+        },
         .dbus => if (build_options.enable_dbus) {
-            try @fieldParentPtr(DBus, "base", base).notify(message);
+            const dbus_sink: *DBus = @fieldParentPtr("base", base);
+            try dbus_sink.notify(message);
         } else unreachable,
     }
 }

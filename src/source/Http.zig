@@ -15,7 +15,7 @@ http_client: *std.http.Client,
 
 request: std.http.Client.Request,
 buf: std.ArrayListUnmanaged(u8) = .{},
-json_value: ?std.json.ValueTree = null,
+parsed_json: ?std.json.Parsed(std.json.Value) = null,
 
 pub const base_tag: Source.Tag = .http;
 
@@ -55,18 +55,22 @@ fn connect(
         .password = null,
         .host = connection.uri.host,
         .port = connection.uri.port,
-        .path = uri_path,
+        .path = .{.raw = uri_path},
         .query = connection.uri.query,
         .fragment = connection.uri.fragment,
     };
 
-    var headers = try Source.constructRequestHeaders(allocator, connection);
-    defer headers.deinit();
+    const headers = try Source.constructRequestHeaders(allocator, connection);
 
-    var request = try http_client.request(.GET, uri, headers, .{});
+    var server_header_buffer: [16 * 1024]u8 = undefined;
+    var request = try http_client.open(.GET, uri, .{
+        .server_header_buffer = &server_header_buffer,
+        .headers = headers,
+    });
     errdefer request.deinit();
 
-    try request.start();
+    try request.send();
+    try request.finish();
     try request.wait();
 
     switch (request.response.status) {
@@ -80,9 +84,9 @@ fn connect(
 
 fn clearBuffers(http: *Http) void {
     http.buf.clearAndFree(http.allocator);
-    if (http.json_value) |*vt| {
-        vt.deinit();
-        http.json_value = null;
+    if (http.parsed_json) |*parsed| {
+        parsed.deinit();
+        http.parsed_json = null;
     }
 }
 
@@ -96,59 +100,48 @@ pub fn deinit(http: *Http) void {
 }
 
 pub fn nextMessage(http: *Http) !ntfy.Message {
-    http.clearBuffers();
+    messages: while (true) {
+        http.clearBuffers();
 
-    var json_streaming_parser = std.json.StreamingParser.init();
+        var json_scanner = std.json.Scanner.initStreaming(http.allocator);
+        defer json_scanner.deinit();
 
-    read: while (true) {
-        const c = try http.request.reader().readByte();
-        try http.buf.append(http.allocator, c);
+        var buffer: [std.json.default_buffer_size]u8 = undefined;
 
-        var token1: ?std.json.Token = undefined;
-        var token2: ?std.json.Token = undefined;
-        try json_streaming_parser.feed(c, &token1, &token2);
-        if (json_streaming_parser.complete) {
-            // We want to avoid as much copying as possible. To
-            // achieve that, we
-            //
-            // a) don't copy strings (unless they are escaped) from
-            // raw buffer -> JSON
-            //
-            // b) don't copy strings from JSON -> ntfy.Message
-            //
-            // This means our data is allocated in two places: the raw
-            // buffer and the JSON value (when strings are
-            // escaped). In case we return a Message, preserve these
-            // two sources, else clear them before reading the next
-            // JSON item. The next call to nextMessage will clear the
-            // two sources.
-            var complete_message = false;
-            defer if (!complete_message) {
-                http.clearBuffers();
+        read: while (true) {
+            json_scanner.skipUntilStackHeight(0) catch |err| switch (err) {
+                error.BufferUnderrun => {
+                    // FIXME put a buffered reader in fromt of http.request.reader() and
+                    // read byte by byte
+                    //
+                    // in case two messages are read at once into the buffer, this would
+                    // save the second message from being ignored
+                    const input = buffer[0..try http.request.reader().read(&buffer)];
+                    json_scanner.feedInput(input);
 
-                json_streaming_parser.reset();
+                    try http.buf.appendSlice(http.allocator, input);
+
+                    continue :read;
+                },
+                else => return err,
             };
 
-            std.log.debug("received JSON: {s}", .{http.buf.items});
+            break :read;
+        }
 
-            var json_parser = std.json.Parser.init(http.allocator, false);
-            defer json_parser.deinit();
+        http.parsed_json = std.json.parseFromSlice(std.json.Value, http.allocator, http.buf.items, .{}) catch |err| {
+            std.log.warn("error parsing JSON message: {}", .{err});
+            continue :messages;
+        };
 
-            http.json_value = json_parser.parse(http.buf.items) catch |err| {
-                std.log.warn("error parsing JSON message: {}", .{err});
-                continue :read;
-            };
+        const message = ntfy.Message.fromJson(http.parsed_json.?.value) catch |err| {
+            std.log.warn("error decoding JSON message: {}", .{err});
+            continue :messages;
+        };
 
-            const message = ntfy.Message.fromJson(http.json_value.?.root) catch |err| {
-                std.log.warn("error decoding JSON message: {}", .{err});
-                continue :read;
-            };
-
-            if (message.event == .message) {
-                std.log.debug("received message: {s}", .{message.message.?});
-                complete_message = true;
-                return message;
-            }
+        if (message.event == .message) {
+            std.log.debug("received message: {s}", .{message.message.?});
+            return message;
         }
     }
 }

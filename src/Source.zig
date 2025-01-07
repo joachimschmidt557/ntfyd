@@ -38,13 +38,19 @@ pub const Connection = struct {
 
 pub fn deinit(base: *Source) void {
     switch (base.tag) {
-        .http => @fieldParentPtr(Http, "base", base).deinit(),
+        .http => {
+            const http_source: *Http = @alignCast(@fieldParentPtr("base", base));
+            http_source.deinit();
+        },
     }
 }
 
 pub fn nextMessage(base: *Source) !Message {
     switch (base.tag) {
-        .http => return try @fieldParentPtr(Http, "base", base).nextMessage(),
+        .http => {
+            const http_source: *Http = @alignCast(@fieldParentPtr("base", base));
+            return try http_source.nextMessage();
+        },
     }
 }
 
@@ -60,7 +66,7 @@ pub fn constructUriPath(
         .http => "json",
     };
 
-    const uri_path = try std.fmt.allocPrint(allocator, "{s}/{s}/{s}", .{
+    const uri_path = try std.fmt.allocPrint(allocator, "{path}/{s}/{s}", .{
         connection.uri.path,
         topics_joined,
         endpoint,
@@ -71,9 +77,8 @@ pub fn constructUriPath(
 pub fn constructRequestHeaders(
     allocator: std.mem.Allocator,
     connection: Connection,
-) !std.http.Headers {
-    var headers = std.http.Headers.init(allocator);
-    errdefer headers.deinit();
+) !std.http.Client.Request.Headers {
+    var headers: std.http.Client.Request.Headers = .{};
 
     if (connection.authentication) |auth| {
         const Base64Encoder = std.base64.standard.Encoder;
@@ -87,7 +92,8 @@ pub fn constructRequestHeaders(
 
         const value = try std.fmt.allocPrint(allocator, "Basic {s}", .{base64});
         defer allocator.free(value);
-        try headers.append("Authorization", value);
+
+        headers.authorization = .{ .override = value };
     }
 
     return headers;

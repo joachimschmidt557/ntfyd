@@ -23,41 +23,41 @@ pub const Message = struct {
 
     pub fn fromJson(json_value: std.json.Value) !Message {
         const root: std.json.ObjectMap = switch (json_value) {
-            .Object => |x| x,
+            .object => |x| x,
             else => return error.ExpectedRootObject,
         };
 
-        const id = try json.jsonObjectGet(.String, root, "id");
+        const id = try json.jsonObjectGet(.string, root, "id");
 
         const time = time: {
-            const raw = try json.jsonObjectGet(.Integer, root, "time");
+            const raw = try json.jsonObjectGet(.integer, root, "time");
             break :time std.math.cast(u64, raw) orelse return error.InvalidTime;
         };
 
         const expires = expires: {
-            const raw = try json.jsonObjectGetOrNull(.Integer, root, "expires") orelse
+            const raw = try json.jsonObjectGetOrNull(.integer, root, "expires") orelse
                 break :expires null;
             break :expires std.math.cast(u64, raw) orelse return error.InvalidExpires;
         };
 
         const event = event: {
-            const raw = try json.jsonObjectGet(.String, root, "event");
+            const raw = try json.jsonObjectGet(.string, root, "event");
             break :event std.meta.stringToEnum(Event, raw) orelse return error.InvalidEvent;
         };
 
-        const topic = try json.jsonObjectGet(.String, root, "topic");
+        const topic = try json.jsonObjectGet(.string, root, "topic");
 
         if (event == .message) {
-            const message = try json.jsonObjectGet(.String, root, "message");
+            const message = try json.jsonObjectGet(.string, root, "message");
 
-            const title = try json.jsonObjectGetOrNull(.String, root, "title") orelse "ntfy";
+            const title = try json.jsonObjectGetOrNull(.string, root, "title") orelse "ntfy";
 
-            const priority = priority: {
-                const raw = try json.jsonObjectGetOrNull(.Integer, root, "priority") orelse
+            const priority: ?u8 = priority: {
+                const raw = try json.jsonObjectGetOrNull(.integer, root, "priority") orelse
                     break :priority null;
 
                 if (raw >= 1 and raw <= 5) {
-                    break :priority @intCast(u8, raw);
+                    break :priority @intCast(raw);
                 } else {
                     return error.InvalidPriority;
                 }

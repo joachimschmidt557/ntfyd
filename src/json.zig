@@ -6,14 +6,14 @@ const JsonTagType = @typeInfo(std.json.Value).Union.tag_type.?;
 
 fn JsonType(comptime T: JsonTagType) type {
     switch (T) {
-        .Null => return void,
-        .Bool => return bool,
-        .Integer => return i64,
-        .Float => return f64,
-        .NumberString => return []const u8,
-        .String => return []const u8,
-        .Array => return std.json.Array,
-        .Object => return std.json.ObjectMap,
+        .null => return void,
+        .bool => return bool,
+        .integer => return i64,
+        .float => return f64,
+        .number_string => return []const u8,
+        .string => return []const u8,
+        .array => return std.json.Array,
+        .object => return std.json.ObjectMap,
     }
 }
 
