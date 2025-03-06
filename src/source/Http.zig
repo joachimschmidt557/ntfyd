@@ -14,7 +14,7 @@ connection: Source.Connection,
 http_client: *std.http.Client,
 
 request: std.http.Client.Request,
-buf: std.ArrayListUnmanaged(u8) = .{},
+buf: std.ArrayListUnmanaged(u8) = .empty,
 parsed_json: ?std.json.Parsed(std.json.Value) = null,
 
 pub const base_tag: Source.Tag = .http;
@@ -55,7 +55,7 @@ fn connect(
         .password = null,
         .host = connection.uri.host,
         .port = connection.uri.port,
-        .path = .{.raw = uri_path},
+        .path = .{ .raw = uri_path },
         .query = connection.uri.query,
         .fragment = connection.uri.fragment,
     };

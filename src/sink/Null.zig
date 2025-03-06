@@ -16,7 +16,7 @@ pub fn create(allocator: std.mem.Allocator) !*Null {
     const result = try allocator.create(Null);
     errdefer allocator.destroy(result);
 
-    result.* = Null{
+    result.* = .{
         .base = .{
             .tag = .null,
             .allocator = allocator,

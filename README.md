@@ -22,7 +22,7 @@ supported.
 
 ## Build
 
-Zig 0.13.0 is required. `ntfyd` follows zig stable releases.
+Zig 0.14.0 is required. `ntfyd` follows zig stable releases.
 
 Compiling is as simple as
 

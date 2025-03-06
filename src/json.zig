@@ -2,7 +2,7 @@
 
 const std = @import("std");
 
-const JsonTagType = @typeInfo(std.json.Value).Union.tag_type.?;
+const JsonTagType = @typeInfo(std.json.Value).@"union".tag_type.?;
 
 fn JsonType(comptime T: JsonTagType) type {
     switch (T) {

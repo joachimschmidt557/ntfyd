@@ -63,7 +63,7 @@ pub const Message = struct {
                 }
             };
 
-            return Message{
+            return .{
                 .id = id,
                 .time = time,
                 .expires = expires,
@@ -74,7 +74,7 @@ pub const Message = struct {
                 .priority = priority,
             };
         } else {
-            return Message{
+            return .{
                 .id = id,
                 .time = time,
                 .expires = expires,

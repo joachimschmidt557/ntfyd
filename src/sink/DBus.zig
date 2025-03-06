@@ -9,7 +9,7 @@ const Sink = @import("../Sink.zig");
 const c = @cImport({
     @cInclude("systemd/sd-bus.h");
 });
-const sd_bus_error_null = c.sd_bus_error{ .name = null, .message = null, ._need_free = 0 };
+const sd_bus_error_null: c.sd_bus_error = .{ .name = null, .message = null, ._need_free = 0 };
 
 const DBus = @This();
 
@@ -29,7 +29,7 @@ pub fn create(allocator: std.mem.Allocator) !*DBus {
     }
 
     if (maybe_bus) |bus| {
-        dbus.* = DBus{
+        dbus.* = .{
             .base = .{
                 .tag = .dbus,
                 .allocator = allocator,
