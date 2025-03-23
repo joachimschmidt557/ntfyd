@@ -61,11 +61,12 @@ fn connect(
     };
 
     const headers = try Source.constructRequestHeaders(allocator, connection);
+    defer headers.deinit(allocator);
 
     var server_header_buffer: [16 * 1024]u8 = undefined;
     var request = try http_client.open(.GET, uri, .{
         .server_header_buffer = &server_header_buffer,
-        .headers = headers,
+        .headers = headers.headers,
     });
     errdefer request.deinit();
 

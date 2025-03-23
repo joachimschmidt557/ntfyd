@@ -74,10 +74,21 @@ pub fn constructUriPath(
     return uri_path;
 }
 
+pub const RequestHeaders = struct {
+    headers: std.http.Client.Request.Headers,
+
+    pub fn deinit(request_headers: RequestHeaders, allocator: std.mem.Allocator) void {
+        switch (request_headers.headers.authorization) {
+            .override => |value| allocator.free(value),
+            else => {},
+        }
+    }
+};
+
 pub fn constructRequestHeaders(
     allocator: std.mem.Allocator,
     connection: Connection,
-) !std.http.Client.Request.Headers {
+) !RequestHeaders {
     var headers: std.http.Client.Request.Headers = .{};
 
     if (connection.authentication) |auth| {
@@ -91,10 +102,8 @@ pub fn constructRequestHeaders(
         const base64 = Base64Encoder.encode(buf, username_password);
 
         const value = try std.fmt.allocPrint(allocator, "Basic {s}", .{base64});
-        defer allocator.free(value);
-
         headers.authorization = .{ .override = value };
     }
 
-    return headers;
+    return .{ .headers = headers };
 }
